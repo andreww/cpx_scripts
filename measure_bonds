@@ -1,0 +1,404 @@
+#! /usr/bin/perl -w
+
+use Math::Trig;
+use Math::MatrixReal;
+use strict;
+
+my $num = '[+-]?\d+\.?\d*';
+my %atomx;
+my %atomy;
+my %atomz;
+my %atom_cartx;
+my %atom_carty;
+my %atom_cartz;
+my $P = 99999999;
+my ($a, $b, $c, $alpha, $beta, $gamma);
+
+while (<>) {
+
+	if (/^data_($num)GPa/) {
+		my $nextP = $1;
+
+		# Dump old data 
+		if ($P != 99999999) {
+			 # Get lattice vextors on cart frame from cell
+			  my $cosa;
+ 			 if ($alpha == 90.0) {
+     			 $cosa = 0.0;
+			  } else {
+   			   my $alp = $alpha*(1/57.29577951);
+    			  $cosa = cos($alp);
+ 			 }
+			  my $cosb;
+			  if ($beta == 90.0) {
+  			   $cosb = 0.0;
+			  } else {
+  			   my $bet = $beta*(1/57.29577951);
+ 			    $cosb = cos($bet);
+			  }
+			  my $cosg;
+			  my $sing;
+			  if ($gamma == 90.0) {
+			     $sing = 1.0;
+			     $cosg = 0.0;
+			  } else {
+ 			    my $gam = $gamma*(1/57.29577951);
+  			   $sing = sin($gam);
+  			   $cosg = cos($gam);
+			  }
+			  my $rv21 = 0.0;
+			  my $rv31 = 0.0;
+			  my $rv32 = 0.0;
+ 			 my $rv11 = $a;
+ 			 my $rv12 = $b*$cosg;
+			  my $rv22 = $b*$sing;
+ 			 my $rv13 = $c*$cosb;
+			  my $rv23 = $c*($cosa - $cosg*$cosb)/$sing;
+			  my $trm1 = $rv23/$c;
+			  my $rv33 = $c*sqrt(1.0 - $cosb**2 - $trm1**2);
+
+			# Get the cartesian positoons of all atoms
+                        foreach my $atomname (keys %atomx) {
+				$atom_cartx{$atomname} = $atomx{$atomname}*$rv11 + $atomy{$atomname}*$rv12 + $atomz{$atomname}*$rv13;
+				$atom_carty{$atomname} = $atomx{$atomname}*$rv21 + $atomy{$atomname}*$rv22 + $atomz{$atomname}*$rv23;
+				$atom_cartz{$atomname} = $atomx{$atomname}*$rv31 + $atomy{$atomname}*$rv32 + $atomz{$atomname}*$rv33;
+			}
+
+			# Bit of a mess to get the O3O3O3 angle...
+
+                        my $O3_cent_x = $atom_cartx{'O20'};
+                        my $O3_cent_y = $atom_carty{'O20'};
+                        my $O3_cent_z = $atom_cartz{'O20'};
+                        my $O3_left_x = $atom_cartx{'O22'};
+                        my $O3_left_y = $atom_carty{'O22'};
+                        my $O3_left_z = $atom_cartz{'O22'};
+                        my $O3_right_x = $atom_cartx{'O22'} + $rv13;
+                        my $O3_right_y = $atom_carty{'O22'} +$rv23;
+                        my $O3_right_z = $atom_cartz{'O22'} +$rv33;
+
+			# Form two vectors 
+			my $vec1_x = $O3_cent_x - $O3_right_x;
+			my $vec1_y = $O3_cent_y - $O3_right_y;
+			my $vec1_z = $O3_cent_z - $O3_right_z;
+			my $vec2_x = $O3_cent_x - $O3_left_x;
+			my $vec2_y = $O3_cent_y - $O3_left_y;
+			my $vec2_z = $O3_cent_z - $O3_left_z;
+
+			my $vec1_norm = sqrt($vec1_x**2 + $vec1_y**2 + $vec1_z**2);
+			my $vec2_norm = sqrt($vec2_x**2 + $vec2_y**2 + $vec2_z**2);
+
+			# angle by dot product
+
+			my $OOOangle = acos((($vec1_x*$vec2_x)+($vec1_y*$vec2_y)+($vec1_z*$vec2_z)) /
+					($vec1_norm * $vec2_norm));
+
+			$OOOangle = rad2deg($OOOangle);
+
+			# Si - O bonds
+			my $SiO1 = &distance('Si8', 'O8');
+			my $SiO2 = &distance('Si8', 'O16');
+			my $SiO3a = &distance('Si2', 'O24');
+			$atom_cartx{'O18T'} = $atom_cartx{'O18'} - $rv13;
+			$atom_carty{'O18T'} = $atom_carty{'O18'} - $rv23;
+			$atom_cartz{'O18T'} = $atom_cartz{'O18'} - $rv33;
+			my $SiO3b = &distance('Si2', 'O18T');
+			my $Siav = ($SiO1 + $SiO2 + $SiO3a + $SiO3b)/4;
+
+
+			my ($Si_radius, $Si_sphericity, $Si_displacment) =  &cetroid('Si8', 'O24', 'O18', 'O16', 'O8');
+			my $Si_volume = &tet_volume('O24', 'O18', 'O16', 'O8');
+			my $Si_ideal = (8*$Si_radius**3)/(9*sqrt(3));
+			my $Si_voldes = ($Si_ideal - $Si_volume)/$Si_ideal * 100;
+
+			# Mg (M1) - O bonds
+			my $M1O1a = &distance('Mg4', 'O4');
+			my $M1O1b = &distance('Mg4', 'O6');
+			my $M1O2 = &distance('Mg4', 'O13');
+			my $M1av = ($M1O1a + $M1O1b + $M1O2) / 3;
+
+			$atom_cartx{'O2T'} = $atom_cartx{'O2'} + $rv13;
+			$atom_carty{'O2T'} = $atom_carty{'O2'} + $rv23;
+			$atom_cartz{'O2T'} = $atom_cartz{'O2'} + $rv33;
+			my ($M1_radius, $M1_sphericity, $M1_displacment) =  &cetroid('Mg4', 'O2T', 'O4', 'O6', 'O8', 'O13', 'O15');
+			my $M1_volume = &tet_volume('Mg4', 'O2T', 'O6', 'O15')+&tet_volume('Mg4', 'O4', 'O13', 'O8')+
+				&tet_volume('Mg4', 'O4', 'O6', 'O15')+&tet_volume('Mg4', 'O13', 'O15', 'O4')+
+				&tet_volume('Mg4', 'O2T', 'O13', 'O8')+&tet_volume('Mg4', 'O2T', 'O6', 'O8')+
+				&tet_volume('Mg4', 'O6', 'O8', 'O4')+&tet_volume('Mg4', 'O15', 'O13', 'O2T');
+			my $M1_ideal = (4/3)*$M1_radius**3;
+			my $M1_voldes = ($M1_ideal - $M1_volume)/$M1_ideal *100;
+
+
+			# Ca (M2) - O bonds
+			my $M2O1 = &distance('Ca2', 'O4');			
+			my $M2O2 = &distance('Ca2', 'O13');			
+			my $M2O3a = &distance('Ca2', 'O21');			
+			# No getting away from the fact that we need to translate O19 in b
+			$atom_cartx{'O19T'} = $atom_cartx{'O19'} + $rv12;
+			$atom_carty{'O19T'} = $atom_carty{'O19'} + $rv22;
+			$atom_cartz{'O19T'} = $atom_cartz{'O19'} + $rv32;
+			my $M2O3b = &distance('Ca2', 'O19T');			
+			my $M2av = ($M2O1 + $M2O2 + $M2O3a + $M2O3b) / 4;
+
+
+			$atom_cartx{'O17Tbc'} = $atom_cartx{'O17'} + $rv12 - $rv13;
+			$atom_carty{'O17Tbc'} = $atom_carty{'O17'} + $rv22 - $rv23;
+			$atom_cartz{'O17Tbc'} = $atom_cartz{'O17'} + $rv32 - $rv33;
+			$atom_cartx{'O15Tc'} = $atom_cartx{'O15'} - $rv13;
+			$atom_carty{'O15Tc'} = $atom_carty{'O15'} - $rv23;
+			$atom_cartz{'O15Tc'} = $atom_cartz{'O15'} - $rv33;
+			$atom_cartx{'O21Tc'} = $atom_cartx{'O21'} - $rv13;
+			$atom_carty{'O21Tc'} = $atom_carty{'O21'} - $rv23;
+			$atom_cartz{'O21Tc'} = $atom_cartz{'O21'} - $rv33;
+			my ($M2_radius, $M2_sphericity, $M2_displacment) =  &cetroid('Ca2', 'O4', 'O13', 'O21', 'O19T', 'O17Tbc', 'O23', 'O2', 'O15Tc');
+			my $M2_volume = &tet_volume('Ca2', 'O4', 'O23', 'O13')+&tet_volume('Ca2', 'O13', 'O23', 'O19T')+
+				&tet_volume('Ca2', 'O23', 'O19T', 'O17Tbc')+&tet_volume('Ca2', 'O19T', 'O17Tbc', 'O21')+
+				&tet_volume('Ca2', 'O17Tbc', 'O15Tc', 'O21')+&tet_volume('Ca2', 'O15Tc', 'O21', 'O2')+
+				&tet_volume('Ca2', 'O2', 'O15Tc', 'O4')+&tet_volume('Ca2', 'O2', 'O4', 'O13')+
+				&tet_volume('Ca2', 'O2', 'O21', 'O13')+&tet_volume('Ca2', 'O2', 'O13', 'O19T')+
+				&tet_volume('Ca2', 'O4', 'O23', 'O15Tc')+&tet_volume('Ca2', 'O15Tc', 'O23', 'O17Tbc');
+			my $M2_ideal = 1.7189*$M2_radius**3; # Calling this a maximum volume square antiprism.
+			my $M2_voldes = ($M2_ideal - $M2_volume)/$M2_ideal * 100;
+
+
+	#		printf "%2.1f & %4.2f & %4.4f & %4.4f & %4.4f & %4.4f & %4.4f & %4.4f & %4.4f & %4.4f \\\\\n",
+	#		    $P, $OOOangle , $Si_displacment, $Si_voldes , $M1_displacment , $M1_sphericity ,  $M1_voldes , $M2_displacment, $M2_sphericity, $M2_voldes;
+#			printf "%2.1f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f  \\\\\n",
+#			    $P, $SiO1, $SiO2, $SiO3a, $SiO3b, $Siav, $Si_radius, $Si_volume ;
+	#		printf "%2.1f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f \\\\\n",
+	#		    $P, $M1O1a, $M1O1b, $M1O2,  $M1av, $M1_radius, $M1_volume; ;
+	#		printf "%2.1f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f\\\\\n",
+	#		    $P, $M2O1, $M2O2, $M2O3a, $M2O3b,  $M2av, $M2_radius, $M2_volume;
+	#		printf "%f %f %f %f %f %f %f %f \n",
+	#		    $P, $SiO1, $SiO2, $SiO3a, $SiO3b, $Siav, $Si_radius, $Si_volume ;
+	#		printf "%f  %f  %f  %f  %f  %f  %f \n",
+	#		    $P, $M1O1a, $M1O1b, $M1O2,  $M1av, $M1_radius, $M1_volume; ;
+#			printf "%f  %f  %f  %f  %f  %f  %f  %f\n",
+#			    $P, $M2O1, $M2O2, $M2O3a, $M2O3b,  $M2av, $M2_radius, $M2_volume;
+			printf "%f  %f  %f  %f\n",
+			    $P, $Si_volume, $M1_volume, $M2_volume;
+
+		}
+
+                $P = $nextP;
+
+	}
+
+	if (/_cell_length_a\s+($num)/) {  
+		$a = $1;
+	}
+	if (/_cell_length_b\s+($num)/) {
+		$b = $1;
+	}
+	if (/_cell_length_c\s+($num)/) { 
+		$c = $1;
+	}
+	if (/_cell_angle_alpha\s+($num)/) {  
+		$alpha = $1;
+	}
+	if (/_cell_angle_beta\s+($num)/) {  
+		$beta = $1;
+	}
+	if (/_cell_angle_gamma\s+($num)/) { 
+		$gamma = $1;
+	}
+
+	if (/(\w\w?\d?\d?)\s+($num)\s+($num)\s+($num)\s+1.000/) {
+
+		my $name = $1;
+		$atomx{$name} = $2;
+		$atomy{$name} = $3;
+		$atomz{$name} = $4;
+
+	}
+
+}
+
+sub distance {
+
+	my ($atom1, $atom2) = @_;
+
+	my $dis = sqrt ( ($atom_cartx{$atom1}-$atom_cartx{$atom2})**2
+		 + ($atom_carty{$atom1}-$atom_carty{$atom2})**2 + ($atom_cartz{$atom1}-$atom_cartz{$atom2})**2 );
+
+
+	return $dis;
+
+}
+
+
+sub cetroid {
+
+	# Calculation of the centroid of a polyhederon following method of 
+	# Zunic and Makovicky, Acta Cryst B52 pp 78-81 (1996). In a couple
+	# of hundred lines which is better then their 6000 odd!
+
+	my ($center, @atoms) = @_;
+
+	my $n = scalar(@atoms); # Number of atoms in cordination sphere
+
+	my $A = new Math::MatrixReal(3,3); #Coefficents on the LHS
+	my $B = new Math::MatrixReal(3,1); #Solutions on the RHS
+
+	my ($sum_x, $sum_y, $sum_z, $sum_xx, $sum_xy, $sum_xz, $sum_yy,
+		$sum_yz, $sum_zz, $sum_xxx, $sum_xxy, $sum_xxz, $sum_xyy,
+		$sum_xzz, $sum_yyy, $sum_yyz,  $sum_yzz, $sum_zzz);
+
+	foreach my $atom (@atoms) {
+		 #print "$atom : $atom_cartx{$atom} $atom_carty{$atom} $atom_cartz{$atom}\n";
+		$sum_x   += $atom_cartx{$atom};
+		$sum_y   += $atom_carty{$atom};
+		$sum_z   += $atom_cartz{$atom};
+		$sum_xx  += ($atom_cartx{$atom}*$atom_cartx{$atom});
+		$sum_xy  += ($atom_cartx{$atom}*$atom_carty{$atom});
+		$sum_xz  += ($atom_cartx{$atom}*$atom_cartz{$atom});
+		$sum_yy  += ($atom_carty{$atom}*$atom_carty{$atom});
+		$sum_yz  += ($atom_carty{$atom}*$atom_cartz{$atom});
+		$sum_zz  += ($atom_cartz{$atom}*$atom_cartz{$atom});
+		$sum_xxx += ($atom_cartx{$atom}*$atom_cartx{$atom}*$atom_cartx{$atom});
+		$sum_xxy += ($atom_cartx{$atom}*$atom_cartx{$atom}*$atom_carty{$atom});
+		$sum_xxz += ($atom_cartx{$atom}*$atom_cartx{$atom}*$atom_cartz{$atom});
+		$sum_xyy += ($atom_cartx{$atom}*$atom_carty{$atom}*$atom_carty{$atom});
+		$sum_xzz += ($atom_cartx{$atom}*$atom_cartz{$atom}*$atom_cartz{$atom});
+		$sum_yyy += ($atom_carty{$atom}*$atom_carty{$atom}*$atom_carty{$atom});
+		$sum_yyz += ($atom_carty{$atom}*$atom_carty{$atom}*$atom_cartz{$atom});
+		$sum_yzz += ($atom_carty{$atom}*$atom_cartz{$atom}*$atom_cartz{$atom});
+		$sum_zzz += ($atom_cartz{$atom}*$atom_cartz{$atom}*$atom_cartz{$atom});
+	}
+		
+	$A->assign(1,1,(2*($sum_xx-($sum_x*$sum_x)/$n)));
+	$A->assign(1,2,(2*($sum_xy-($sum_x*$sum_y)/$n)));
+	$A->assign(1,3,(2*($sum_xz-($sum_x*$sum_z)/$n)));
+	$B->assign(1,1, ($sum_xxx + $sum_xyy + $sum_xzz - ($sum_xx*$sum_x/$n) - ($sum_yy*$sum_x/$n) - ($sum_zz*$sum_x/$n) ));
+
+	$A->assign(2,1,(2*($sum_xy-($sum_x*$sum_y)/$n)));
+	$A->assign(2,2,(2*($sum_yy-($sum_y*$sum_y)/$n)));
+	$A->assign(2,3,(2*($sum_yz-($sum_y*$sum_z)/$n)));
+	$B->assign(2,1, ($sum_xxy + $sum_yyy + $sum_yzz - ($sum_xx*$sum_y/$n) - ($sum_yy*$sum_y/$n) - ($sum_zz*$sum_y/$n) ));
+
+	$A->assign(3,1,(2*($sum_xz-($sum_x*$sum_z)/$n)));
+	$A->assign(3,2,(2*($sum_yz-($sum_y*$sum_z)/$n)));
+	$A->assign(3,3,(2*($sum_zz-($sum_z*$sum_z)/$n)));
+	$B->assign(3,1, ($sum_xxz+ $sum_yyz + $sum_zzz - ($sum_xx*$sum_z/$n) - ($sum_yy*$sum_z/$n) - ($sum_zz*$sum_z/$n) ));
+
+	# Sove equation 4...
+	my ($An, $Bn) = $A->normalize($B);
+	my $AnLR = $An->decompose_LR();
+	my ($dim, $cent, $ZZ);
+	if ( ($dim, $cent, $ZZ) = $AnLR->solve_LR($Bn) ) {
+		die "Multiple solutions $dim \n $ZZ \n $cent\n" if ($dim != 0) 
+	} else {
+		die "Could not solve equation 4\n";
+	}
+
+	# Check that the result is enclosed by the polyhederon (otherwise we could have a "cap" solution, or some oddness 
+	# with tetrahedera 
+	my ($px_ok, $py_ok, $pz_ok) = (0,0,0);
+	my ($mx_ok, $my_ok, $mz_ok) = (0,0,0);
+	foreach my $atom (@atoms) {
+		if ($atom_cartx{$atom} >= $cent->element(1,1)) {$px_ok ++}
+		if ($atom_cartx{$atom} <= $cent->element(1,1)) {$mx_ok ++}
+		if ($atom_carty{$atom} >= $cent->element(2,1)) {$py_ok ++}
+		if ($atom_carty{$atom} <= $cent->element(2,1)) {$my_ok ++}
+		if ($atom_cartz{$atom} >= $cent->element(3,1)) {$pz_ok ++}
+		if ($atom_cartz{$atom} <= $cent->element(3,1)) {$mz_ok ++}
+	}
+	die "Cap solution  $dim \n $ZZ \n $cent\n $px_ok, $py_ok, $pz_ok, $mx_ok, $my_ok, $mz_ok \n" .
+	 	"Cent atom $center : $atom_cartx{$center} $atom_carty{$center} $atom_cartz{$center}\n"
+		unless ($px_ok && $py_ok && $pz_ok && $mx_ok && $my_ok&& $mz_ok);
+
+	my ($av_centx, $av_centy, $av_centz); # Avarage (i.e. center of mass) of polyhederon
+	my $radius; # Avarage distence from the centeroid to the atoms
+	my $sphericity; # 1-sdv / r 
+	foreach my $atom (@atoms) {
+	 #	print "$atom : $atom_cartx{$atom} $atom_carty{$atom} $atom_cartz{$atom}\n";
+		$av_centx += $atom_cartx{$atom};
+		$av_centy += $atom_carty{$atom};
+		$av_centz += $atom_cartz{$atom};
+		$radius += sqrt( ($cent->element(1,1) - $atom_cartx{$atom})**2 +
+		($cent->element(2,1) - $atom_carty{$atom})**2 +
+		($cent->element(3,1) - $atom_cartz{$atom})**2);
+	}
+	$av_centx /= $n;
+	$av_centy /= $n;
+	$av_centz /= $n;
+	$radius /= $n;
+
+	if ($n > 4 ) {
+		foreach my $atom (@atoms) {
+			$sphericity += (( ($cent->element(1,1) - $atom_cartx{$atom})**2 +
+			($cent->element(2,1) - $atom_carty{$atom})**2 +
+			($cent->element(3,1) - $atom_cartz{$atom})**2) - $radius**2);
+		}
+		$sphericity = sqrt((1/$n)*$sphericity);
+		$sphericity = 1-$sphericity/$radius;
+	} else {
+		$sphericity = 1;
+	}
+
+	#print "Cent atom $center : $atom_cartx{$center} $atom_carty{$center} $atom_cartz{$center}\n";
+	#print "Av Cent : $av_centx  $av_centy $av_centz \n";
+
+	my $displacment = sqrt( ($cent->element(1,1) - $atom_cartx{$center})**2 +
+		($cent->element(2,1) - $atom_carty{$center})**2 +
+		($cent->element(3,1) - $atom_cartz{$center})**2);
+	#print "displacment $displacment \n";
+	#print "radius $radius\n";
+	#print "sphericity $sphericity\n";
+
+	return ($radius, $sphericity, $displacment);
+}
+
+sub tet_volume {
+	my (@atom) = @_;
+
+	die "There are four atoms in a tetrahederon\n" if ( scalar (@atom) != 4 ) ;
+
+	my $V1_x = $atom_cartx{$atom[1]} - $atom_cartx{$atom[2]};
+	my $V1_y = $atom_carty{$atom[1]} - $atom_carty{$atom[2]};
+	my $V1_z = $atom_cartz{$atom[1]} - $atom_cartz{$atom[2]};
+	my $V2_x = $atom_cartx{$atom[1]} - $atom_cartx{$atom[3]};
+	my $V2_y = $atom_carty{$atom[1]} - $atom_carty{$atom[3]};
+	my $V2_z = $atom_cartz{$atom[1]} - $atom_cartz{$atom[3]};
+
+	#
+	# Find the perpendicular distance from triangle 
+	# atom1-atom2-atom3 to atom 0. 
+	#
+	my $norm_x = $V1_y * $V2_z - $V1_z * $V2_y;
+	my $norm_y = $V1_z * $V2_x - $V1_x * $V2_z;
+	my $norm_z = $V1_x * $V2_y - $V1_y * $V2_x;
+	my $norm_mag = sqrt ($norm_x**2 + $norm_y**2 + $norm_z**2);
+
+	my $unit_norm_x = $norm_x / $norm_mag;
+	my $unit_norm_y = $norm_y / $norm_mag;
+	my $unit_norm_z = $norm_z / $norm_mag;
+
+	my $V3_x = $atom_cartx{$atom[1]} - $atom_cartx{$atom[0]};
+	my $V3_y = $atom_carty{$atom[1]} - $atom_carty{$atom[0]};
+	my $V3_z = $atom_cartz{$atom[1]} - $atom_cartz{$atom[0]};
+
+	# Hight of point 0 perpendicular to triangle 123
+	my $H = $unit_norm_x*$V3_x  + $unit_norm_y*$V3_y + $unit_norm_z*$V3_z;;
+	if ($H < 0) {$H = $H * -1} # We don't care about the direction
+	if ($H == 0) {die "Point seem to be in a plane\n"};
+
+
+	#
+	# Work out the area of triangle atom1-atom2-atom3
+	#
+	my $V4_x = $atom_cartx{$atom[2]} - $atom_cartx{$atom[3]};
+	my $V4_y = $atom_carty{$atom[2]} - $atom_carty{$atom[3]};
+	my $V4_z = $atom_cartz{$atom[2]} - $atom_cartz{$atom[3]};
+	my $sp = ((
+		(sqrt($V1_x**2+$V1_y**2+$V1_z**2))+
+		(sqrt($V2_x**2+$V2_y**2+$V2_z**2))+
+		(sqrt($V4_x**2+$V4_y**2+$V4_z**2)) )/2); # Semiperimiter of triangle 123
+	my $A = sqrt($sp*
+		($sp-(sqrt($V1_x**2+$V1_y**2+$V1_z**2)))*
+		($sp-(sqrt($V2_x**2+$V2_y**2+$V2_z**2)))*
+		($sp-(sqrt($V4_x**2+$V4_y**2+$V4_z**2))) ); # Area of triangle 123
+
+	# Volume given by 1/3 * $A * $H
+	return ((1/3) * $A * $H);
+
+}

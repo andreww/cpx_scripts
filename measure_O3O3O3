@@ -1,0 +1,128 @@
+#! /usr/bin/perl -w
+
+use Math::Trig;
+
+my $num = '[+-]?\d+\.?\d*';
+my %atomx;
+my %atomy;
+my %atomz;
+my $P = 99999999;
+my ($a, $b, $c, $alpha, $beta, $gamma);
+
+while (<>) {
+
+	if (/^data_($num)GPa/) {
+		my $nextP = $1;
+
+		# Dump old data 
+		if ($P != 99999999) {
+			 # Get lattice vextors on cart frame from cell
+			  my $cosa;
+ 			 if ($alpha == 90.0) {
+     			 $cosa = 0.0;
+			  } else {
+   			   my $alp = $alpha*(1/57.29577951);
+    			  $cosa = cos($alp);
+ 			 }
+			  my $cosb;
+			  if ($beta == 90.0) {
+  			   $cosb = 0.0;
+			  } else {
+  			   my $bet = $beta*(1/57.29577951);
+ 			    $cosb = cos($bet);
+			  }
+			  my $cosg;
+			  my $sing;
+			  if ($gamma == 90.0) {
+			     $sing = 1.0;
+			     $cosg = 0.0;
+			  } else {
+ 			    my $gam = $gamma*(1/57.29577951);
+  			   $sing = sin($gam);
+  			   $cosg = cos($gam);
+			  }
+			  my $rv21 = 0.0;
+			  my $rv31 = 0.0;
+			  my $rv32 = 0.0;
+ 			 my $rv11 = $a;
+ 			 my $rv12 = $b*$cosg;
+			  my $rv22 = $b*$sing;
+ 			 my $rv13 = $c*$cosb;
+			  my $rv23 = $c*($cosa - $cosg*$cosb)/$sing;
+			  my $trm1 = $rv23/$c;
+			  my $rv33 = $c*sqrt(1.0 - $cosb**2 - $trm1**2);
+
+			# Get the cartesian positoons of three O3 atoms to measure the 
+			# angles.
+
+			my $O3_cent_x = $atomx{'O20'}*$rv11 + $atomy{'O20'}*$rv12 + $atomz{'O20'}*$rv13;
+			my $O3_cent_y = $atomx{'O20'}*$rv21 + $atomy{'O20'}*$rv22 + $atomz{'O20'}*$rv23;
+			my $O3_cent_z = $atomx{'O20'}*$rv31 + $atomy{'O20'}*$rv32 + $atomz{'O20'}*$rv33;
+			my $O3_left_x = $atomx{'O22'}*$rv11 + $atomy{'O22'}*$rv12 + $atomz{'O22'}*$rv13;
+			my $O3_left_y = $atomx{'O22'}*$rv21 + $atomy{'O22'}*$rv22 + $atomz{'O22'}*$rv23;
+			my $O3_left_z = $atomx{'O22'}*$rv31 + $atomy{'O22'}*$rv32 + $atomz{'O22'}*$rv33;
+			my $O3_right_x = ($atomx{'O22'}*$rv11 + $atomy{'O22'}*$rv12 + $atomz{'O22'}*$rv13) 
+				+$rv13;
+			my $O3_right_y = ($atomx{'O22'}*$rv21 + $atomy{'O22'}*$rv22 + $atomz{'O22'}*$rv23)
+				+$rv23;
+			my $O3_right_z = ($atomx{'O22'}*$rv31 + $atomy{'O22'}*$rv32 + $atomz{'O22'}*$rv33)
+				+$rv33;
+
+			# Form two vectors 
+			my $vec1_x = $O3_cent_x - $O3_right_x;
+			my $vec1_y = $O3_cent_y - $O3_right_y;
+			my $vec1_z = $O3_cent_z - $O3_right_z;
+			my $vec2_x = $O3_cent_x - $O3_left_x;
+			my $vec2_y = $O3_cent_y - $O3_left_y;
+			my $vec2_z = $O3_cent_z - $O3_left_z;
+
+			my $vec1_norm = sqrt($vec1_x**2 + $vec1_y**2 + $vec1_z**2);
+			my $vec2_norm = sqrt($vec2_x**2 + $vec2_y**2 + $vec2_z**2);
+
+			# angle by dot product
+
+			my $OOOangle = acos((($vec1_x*$vec2_x)+($vec1_y*$vec2_y)+($vec1_z*$vec2_z)) /
+					($vec1_norm * $vec2_norm));
+
+			$OOOangle = rad2deg($OOOangle);
+
+
+			print "$P $OOOangle \\\\ \n";
+
+		}
+
+                $P = $nextP;
+
+	}
+
+	if (/_cell_length_a\s+($num)/) {  
+		$a = $1;
+	}
+	if (/_cell_length_b\s+($num)/) {
+		$b = $1;
+	}
+	if (/_cell_length_c\s+($num)/) { 
+		$c = $1;
+	}
+	if (/_cell_angle_alpha\s+($num)/) {  
+		$alpha = $1;
+	}
+	if (/_cell_angle_beta\s+($num)/) {  
+		$beta = $1;
+	}
+	if (/_cell_angle_gamma\s+($num)/) { 
+		$gamma = $1;
+	}
+
+	if (/(\w\w?\d?\d?)\s+($num)\s+($num)\s+($num)\s+1.000/) {
+
+		my $name = $1;
+		$atomx{$name} = $2;
+		$atomy{$name} = $3;
+		$atomz{$name} = $4;
+
+	}
+
+}
+
+

@@ -1,0 +1,38 @@
+#! /usr/bin/perl -w
+
+my $num = '[+-]?\d+\.?\d*';
+my %atomx;
+my %atomy;
+my %atomz;
+my $P = 99999999;
+
+while (<>) {
+
+	if (/^data_($num)GPa/) {
+		my $nextP = $1;
+
+		# Dump old data 
+		if ($P != 99999999) {
+			print "$P & $atomy{'Mg1'} & $atomy{'Ca1'} & $atomx{'Si1'} &";
+			print " $atomy{'Si1'} & $atomz{'Si1'} & $atomx{'O1'} &";
+                        print " $atomy{'O1'} & $atomz{'O1'} & $atomx{'O2'} &";
+                        print " $atomy{'O2'} & $atomz{'O2'} & $atomx{'O3'} &";
+                        print " $atomy{'O3'} & $atomz{'O3'} \\\\ \n";
+		}
+
+                $P = $nextP;
+
+	}
+
+	if (/(\w\w?\d?\d?)\s+($num)\s+($num)\s+($num)\s+1.000/) {
+
+		my $name = $1;
+		$atomx{$name} = $2;
+		$atomy{$name} = $3;
+		$atomz{$name} = $4;
+
+	}
+
+}
+
+
