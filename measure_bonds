@@ -111,32 +111,34 @@ while (<>) {
 			my $Si_voldes = ($Si_ideal - $Si_volume)/$Si_ideal * 100;
 
 			# Mg (M1) - O bonds
-			my $M1O1a = &distance('Mg4', 'O4');
-			my $M1O1b = &distance('Mg4', 'O6');
-			my $M1O2 = &distance('Mg4', 'O13');
+			my $M1 = 'Al4'; # = 'Mg4' for diopside
+			my $M1O1a = &distance($M1, 'O4');
+			my $M1O1b = &distance($M1, 'O6');
+			my $M1O2 = &distance($M1, 'O13');
 			my $M1av = ($M1O1a + $M1O1b + $M1O2) / 3;
 
 			$atom_cartx{'O2T'} = $atom_cartx{'O2'} + $rv13;
 			$atom_carty{'O2T'} = $atom_carty{'O2'} + $rv23;
 			$atom_cartz{'O2T'} = $atom_cartz{'O2'} + $rv33;
-			my ($M1_radius, $M1_sphericity, $M1_displacment) =  &cetroid('Mg4', 'O2T', 'O4', 'O6', 'O8', 'O13', 'O15');
-			my $M1_volume = &tet_volume('Mg4', 'O2T', 'O6', 'O15')+&tet_volume('Mg4', 'O4', 'O13', 'O8')+
-				&tet_volume('Mg4', 'O4', 'O6', 'O15')+&tet_volume('Mg4', 'O13', 'O15', 'O4')+
-				&tet_volume('Mg4', 'O2T', 'O13', 'O8')+&tet_volume('Mg4', 'O2T', 'O6', 'O8')+
-				&tet_volume('Mg4', 'O6', 'O8', 'O4')+&tet_volume('Mg4', 'O15', 'O13', 'O2T');
+			my ($M1_radius, $M1_sphericity, $M1_displacment) =  &cetroid($M1, 'O2T', 'O4', 'O6', 'O8', 'O13', 'O15');
+			my $M1_volume = &tet_volume($M1, 'O2T', 'O6', 'O15')+&tet_volume($M1, 'O4', 'O13', 'O8')+
+				&tet_volume($M1, 'O4', 'O6', 'O15')+&tet_volume($M1, 'O13', 'O15', 'O4')+
+				&tet_volume($M1, 'O2T', 'O13', 'O8')+&tet_volume($M1, 'O2T', 'O6', 'O8')+
+				&tet_volume($M1, 'O6', 'O8', 'O4')+&tet_volume($M1, 'O15', 'O13', 'O2T');
 			my $M1_ideal = (4/3)*$M1_radius**3;
 			my $M1_voldes = ($M1_ideal - $M1_volume)/$M1_ideal *100;
 
 
 			# Ca (M2) - O bonds
-			my $M2O1 = &distance('Ca2', 'O4');			
-			my $M2O2 = &distance('Ca2', 'O13');			
-			my $M2O3a = &distance('Ca2', 'O21');			
+			my $M2 = 'Na2'; # or = 'Ca2' for diopside
+			my $M2O1 = &distance($M2, 'O4');			
+			my $M2O2 = &distance($M2, 'O13');			
+			my $M2O3a = &distance($M2, 'O21');			
 			# No getting away from the fact that we need to translate O19 in b
 			$atom_cartx{'O19T'} = $atom_cartx{'O19'} + $rv12;
 			$atom_carty{'O19T'} = $atom_carty{'O19'} + $rv22;
 			$atom_cartz{'O19T'} = $atom_cartz{'O19'} + $rv32;
-			my $M2O3b = &distance('Ca2', 'O19T');			
+			my $M2O3b = &distance($M2, 'O19T');			
 			my $M2av = ($M2O1 + $M2O2 + $M2O3a + $M2O3b) / 4;
 
 
@@ -149,31 +151,46 @@ while (<>) {
 			$atom_cartx{'O21Tc'} = $atom_cartx{'O21'} - $rv13;
 			$atom_carty{'O21Tc'} = $atom_carty{'O21'} - $rv23;
 			$atom_cartz{'O21Tc'} = $atom_cartz{'O21'} - $rv33;
-			my ($M2_radius, $M2_sphericity, $M2_displacment) =  &cetroid('Ca2', 'O4', 'O13', 'O21', 'O19T', 'O17Tbc', 'O23', 'O2', 'O15Tc');
-			my $M2_volume = &tet_volume('Ca2', 'O4', 'O23', 'O13')+&tet_volume('Ca2', 'O13', 'O23', 'O19T')+
-				&tet_volume('Ca2', 'O23', 'O19T', 'O17Tbc')+&tet_volume('Ca2', 'O19T', 'O17Tbc', 'O21')+
-				&tet_volume('Ca2', 'O17Tbc', 'O15Tc', 'O21')+&tet_volume('Ca2', 'O15Tc', 'O21', 'O2')+
-				&tet_volume('Ca2', 'O2', 'O15Tc', 'O4')+&tet_volume('Ca2', 'O2', 'O4', 'O13')+
-				&tet_volume('Ca2', 'O2', 'O21', 'O13')+&tet_volume('Ca2', 'O2', 'O13', 'O19T')+
-				&tet_volume('Ca2', 'O4', 'O23', 'O15Tc')+&tet_volume('Ca2', 'O15Tc', 'O23', 'O17Tbc');
+			my ($M2_radius, $M2_sphericity, $M2_displacment) =  &cetroid($M2, 'O4', 'O13', 'O21', 'O19T', 'O17Tbc', 'O23', 'O2', 'O15Tc');
+			my $M2_volume = &tet_volume($M2, 'O4', 'O23', 'O13')+&tet_volume($M2, 'O13', 'O23', 'O19T')+
+				&tet_volume($M2, 'O23', 'O19T', 'O17Tbc')+&tet_volume($M2, 'O19T', 'O17Tbc', 'O21')+
+				&tet_volume($M2, 'O17Tbc', 'O15Tc', 'O21')+&tet_volume($M2, 'O15Tc', 'O21', 'O2')+
+				&tet_volume($M2, 'O2', 'O15Tc', 'O4')+&tet_volume($M2, 'O2', 'O4', 'O13')+
+				&tet_volume($M2, 'O2', 'O21', 'O13')+&tet_volume($M2, 'O2', 'O13', 'O19T')+
+				&tet_volume($M2, 'O4', 'O23', 'O15Tc')+&tet_volume($M2, 'O15Tc', 'O23', 'O17Tbc');
 			my $M2_ideal = 1.7189*$M2_radius**3; # Calling this a maximum volume square antiprism.
 			my $M2_voldes = ($M2_ideal - $M2_volume)/$M2_ideal * 100;
 
 
-	#		printf "%2.1f & %4.2f & %4.4f & %4.4f & %4.4f & %4.4f & %4.4f & %4.4f & %4.4f & %4.4f \\\\\n",
-	#		    $P, $OOOangle , $Si_displacment, $Si_voldes , $M1_displacment , $M1_sphericity ,  $M1_voldes , $M2_displacment, $M2_sphericity, $M2_voldes;
-#			printf "%2.1f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f  \\\\\n",
-#			    $P, $SiO1, $SiO2, $SiO3a, $SiO3b, $Siav, $Si_radius, $Si_volume ;
-	#		printf "%2.1f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f \\\\\n",
-	#		    $P, $M1O1a, $M1O1b, $M1O2,  $M1av, $M1_radius, $M1_volume; ;
-	#		printf "%2.1f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f\\\\\n",
-	#		    $P, $M2O1, $M2O2, $M2O3a, $M2O3b,  $M2av, $M2_radius, $M2_volume;
-	#		printf "%f %f %f %f %f %f %f %f \n",
-	#		    $P, $SiO1, $SiO2, $SiO3a, $SiO3b, $Siav, $Si_radius, $Si_volume ;
-	#		printf "%f  %f  %f  %f  %f  %f  %f \n",
-	#		    $P, $M1O1a, $M1O1b, $M1O2,  $M1av, $M1_radius, $M1_volume; ;
-#			printf "%f  %f  %f  %f  %f  %f  %f  %f\n",
-#			    $P, $M2O1, $M2O2, $M2O3a, $M2O3b,  $M2av, $M2_radius, $M2_volume;
+			# LaTeX of asymetry params...
+			#printf "%2.1f & %4.2f & %4.4f & %4.4f & %4.4f & %4.4f & %4.4f & %4.4f & %4.4f & %4.4f \\\\\n",
+			#    $P, $OOOangle , $Si_displacment, $Si_voldes , $M1_displacment , $M1_sphericity ,  $M1_voldes , $M2_displacment, $M2_sphericity, $M2_voldes;
+
+			# LaTeX of Si bond lengths and params
+			#printf "%2.1f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f  \\\\\n",
+			#    $P, $SiO1, $SiO2, $SiO3a, $SiO3b, $Siav, $Si_radius, $Si_volume ;
+
+			# LaTeX of M1 bond lengths and params
+			#printf "%2.1f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f \\\\\n",
+			#    $P, $M1O1a, $M1O1b, $M1O2,  $M1av, $M1_radius, $M1_volume; ;
+
+			# LaTeX of M2 bond lengths and params
+			#printf "%2.1f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f & %4.3f\\\\\n",
+			#    $P, $M2O1, $M2O2, $M2O3a, $M2O3b,  $M2av, $M2_radius, $M2_volume;
+
+			# .dat of Si bond lengths and params
+			#printf "%f %f %f %f %f %f %f %f \n",
+			#    $P, $SiO1, $SiO2, $SiO3a, $SiO3b, $Siav, $Si_radius, $Si_volume ;
+
+			# .dat of M1 bond lengths and params
+			#printf "%f  %f  %f  %f  %f  %f  %f \n",
+			#    $P, $M1O1a, $M1O1b, $M1O2,  $M1av, $M1_radius, $M1_volume; ;
+			
+			# .dat of M2 bond lengths and params
+			#printf "%f  %f  %f  %f  %f  %f  %f  %f\n",
+			#    $P, $M2O1, $M2O2, $M2O3a, $M2O3b,  $M2av, $M2_radius, $M2_volume;
+
+			# .dat of poly volumes ...
 			printf "%f  %f  %f  %f\n",
 			    $P, $Si_volume, $M1_volume, $M2_volume;
 

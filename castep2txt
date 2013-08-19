@@ -13,19 +13,28 @@ my @atomsC;
 my @atomsName;
 my @atomsNumber;
 
+#my $num_skip = 0 ; # Castep files can end up concatanated - skip this number first.
+#my $num_found = 0;
+
 my $writer = 'cif'; # cif, cell or gasp...
+$writer = 'tex';
 
 while (<>) {
 
 	if (/BFGS: Geometry optimization completed successfully/) {
-		$inres = 1;
-		($a, $b, $c, $alpha, $beta, $gamma, $energy, $vol) =0;
-		($time, $pressure, $atoms) =0;
-		undef(@atomsA);
-		undef(@atomsB);
-		undef(@atomsC);
-		undef(@atomsName);
-		undef(@atomsNumber);
+#		if ($num_found <= $num_skip) {
+#			$num_found ++;
+#		} else {
+			$inres = 1;
+#			$num_found = 0;
+			($a, $b, $c, $alpha, $beta, $gamma, $energy, $vol) =0;
+			($time, $pressure, $atoms) =0;
+			undef(@atomsA);
+			undef(@atomsB);
+			undef(@atomsC);
+			undef(@atomsName);
+			undef(@atomsNumber);
+#		}
 		next;
 	} elsif ($inres == 0) {
 		next;
@@ -63,6 +72,8 @@ while (<>) {
 		$inres = 0;
 		if ($writer eq 'txt') {
 			&write_txt;
+		} elsif ($writer eq 'tex') {
+			&write_tex;
 		} elsif ($writer eq 'cif') {
 			&write_cif;
 		} elsif ($writer eq 'cell') {
@@ -77,6 +88,9 @@ while (<>) {
 
 sub write_txt {
 	print "$energy $pressure $a $b $c $alpha $beta $gamma $vol\n";
+}
+sub write_tex {
+	printf "%2.1f & %4.3f & %4.3f & %4.3f & %4.2f & %4.1f \\\\\n" , $pressure , $a , $b , $c , $beta , $vol ;
 }
 
 sub write_cif {

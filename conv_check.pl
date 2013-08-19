@@ -3,6 +3,7 @@
 use warnings;
 use strict;
 
+my $Enum = '[+-]?\d+\.?\d*[eEdD]?[+-]?\d*';
 my $num = '[+-]?\d+\.?\d*';
 
 sub open_file 
@@ -13,7 +14,7 @@ sub open_file
 	return $fh;
 }
 
-print "#Filename    cuttoff (eV)    MP grid    energy (eV)    stress_xx (GPa)    force_1x (eV/A)\n";
+print "#Filename    cuttoff (eV)    MP grid    energy (eV)    stress_xx (GPa)    force_1x (eV/A) spin den  |spin den|\n";
 print "#########################################################################################\n";
 foreach my $filename (@ARGV) 
 {
@@ -22,7 +23,9 @@ foreach my $filename (@ARGV)
 	my $stress = '??????';
 	my $in_force = 0;
 	my $force = '?????';
-	my $energy; 
+	my $int_spin_den = 0;
+	my $int_mod_spin_den = 0;
+	my $energy = '????'; 
 	my $MP_grid;
 	my $cuttoff;
 
@@ -31,6 +34,14 @@ foreach my $filename (@ARGV)
 		if ($line =~ /Symmetrised Stress Tensor/) 
 		{
 			$in_stress ++;
+		}
+		elsif ($line =~ /Integrated Spin Density\s+=\s+($Enum)/)
+		{
+			$int_spin_den = $1;
+		}
+		elsif ($line =~ /Integrated \|Spin Density\|\s+=\s+($Enum)/)
+		{
+			$int_mod_spin_den = $1;
 		}
 		elsif (($in_stress) and
 		       ($line =~ /\*\s+x\s+($num)\s+$num\s+$num\s+\*/))
@@ -61,7 +72,7 @@ foreach my $filename (@ARGV)
 			$MP_grid = $1 . 'x' . $2 . 'x' . $3;
 		}
 	}
-	print $filename . ": " . $cuttoff . " " . $MP_grid . " " . $energy ." " . $stress . " " . $force . "\n";
+	print $filename . ": " . $cuttoff . " " . $MP_grid . " " . $energy ." " . $stress . " " . $force . " " . $int_spin_den . " " . $int_mod_spin_den ."\n";
 
 	close($fh);
 }
